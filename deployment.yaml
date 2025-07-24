@@ -1,0 +1,83 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: appapi
+
+---
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  namespace: appapi
+  labels:
+    app.kubernetes.io/name: LoadBalancerController
+  name: alb
+spec:
+  controller: eks.amazonaws.com/alb
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  namespace: appapi
+  name: appapi
+  labels:
+    app: appapi
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/ip-address-type: ipv4
+    alb.ingress.kubernetes.io/subnets: subnet-0f3773cbcc47d6c4f, subnet-044010bf5e8e38680, subnet-03036f25fb9fd330f
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:eu-central-1:777230094305:certificate/6c7680bc-0219-41b3-983f-342d9a3b6199"
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: service-appapi
+                port:
+                  number: 443
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: appapi
+  name: appapi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: appapi
+  template:
+    metadata:
+      labels:
+        app: appapi
+    spec:
+      terminationGracePeriodSeconds: 0
+      containers:
+        - name: appapi
+          image: 777230094305.dkr.ecr.eu-central-1.amazonaws.com/api_image:20250724
+          resources:
+            requests:
+              cpu: 1
+          ports:
+            - containerPort: 5000
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: appapi
+  name: service-appapi
+spec:
+  ports:
+    - port: 443
+      targetPort: 5000
+      protocol: TCP
+  type: NodePort
+  selector:
+    app: appapi

@@ -35,3 +35,5 @@ terraform destroy
 ## Deploy Amplify
 
 Once the infrastructure is deployed run a job to perform the Amplify deployment
+
+
